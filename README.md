@@ -26,7 +26,3 @@ JWT_SECRET=[gerar com: node -e "console.log(require('crypto').randomBytes(64).to
 npm start
 
 # acesse o sistema em http://localhost:3000
-
-npm start
-
-*acesse o sistema em http://localhost:3000
