@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transações | Sistema Financeiro</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="body-transacoes">
+    <div class="container-transacoes">
+        <header class="transacoes-header">
+            <h1>Transações</h1>
+            <div class="transacoes-user-menu">
+                <span id="saudacao-usuario">Carregando...</span>
+                <button class="transacoes-logout-btn" onclick="logout()">Sair</button>
+            </div>
+        </header>
+
+        <section class="transacoes-resumo">
+            <div class="transacoes-card">
+                <h3>Saldo atual</h3>
+                <p class="transacoes-valor transacoes-saldo">R$ 0,00</p>
+            </div>
+            <div class="transacoes-card">
+                <h3>Receita dos últimos 30d</h3>
+                <p class="transacoes-valor transacoes-receita">R$ 0,00</p>
+            </div>
+            <div class="transacoes-card">
+                <h3>Despesas últimos 30d</h3>
+                <p class="transacoes-valor transacoes-despesa">R$ 0,00</p>
+            </div>
+        </section>
+
+        <section class="transacoes-registro">
+            <div class="transacoes-registro-header">
+                <h2>Registro de transações</h2>
+                <button class="btn-novo" onclick="abrirModal()">
+                    <i class="fas fa-plus"></i> Novo
+                </button>
+            </div>
+
+            <table class="transacoes-tabela">
+                <thead>
+                    <tr>
+                        <th>Descrição</th>
+                        <th>Tipo</th>
+                        <th>Data</th>
+                        <th>Valor</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="transacoes-body">
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 20px;">
+                            Carregando transações...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <div id="modalTransacao" class="transacoes-modal">
+            <div class="transacoes-modal-content">
+                <div class="transacoes-modal-header">
+                    <h2>Nova Transação</h2>
+                    <span class="transacoes-close" onclick="fecharModal()">&times;</span>
+                </div>
+                <form id="formTransacao" class="transacoes-form">
+                    <div class="transacoes-form-group">
+                        <label for="descricao">Descrição</label>
+                        <input type="text" id="descricao" required>
+                    </div>
+                    <div class="transacoes-form-group">
+                        <label for="tipo">Tipo</label>
+                        <select id="tipo" required>
+                            <option value="">Selecione o tipo</option>
+                            <option value="receita">Receita</option>
+                            <option value="despesa">Despesa</option>
+                        </select>
+                    </div>
+                    <div class="transacoes-form-group">
+                        <label for="data">Data</label>
+                        <input type="date" id="data" required>
+                    </div>
+                    <div class="transacoes-form-group">
+                        <label for="valor">Valor (R$)</label>
+                        <input type="number" id="valor" step="0.01" min="0" required>
+                    </div>
+                    <div class="transacoes-form-actions">
+                        <button type="button" onclick="fecharModal()">Cancelar</button>
+                        <button type="submit">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let transacoes = [];
+
+        function formatarMoeda(valor) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(valor);
+        }
+
+        function formatarData(dataString) {
+            const data = new Date(dataString);
+            return data.toLocaleDateString('pt-BR');
+        }
+
+        async function carregarUsuario() {
+            const elementoSaudacao = document.getElementById('saudacao-usuario');
+            
+            try {
+                const response = await fetch('/api/usuario');
+                
+                if (response.status === 401) {
+                    window.location.href = '/';
+                    return;
+                }
+                
+                if (!response.ok) throw new Error(`Erro HTTP: ${response.status}`);
+                
+                const data = await response.json();
+                
+                if (data.success && data.usuario) {
+                    elementoSaudacao.textContent = `Olá, ${data.usuario.nome}`;
+                    await carregarTransacoes();
+                    await carregarDashboard();
+                } else {
+                    throw new Error('Dados do usuário inválidos');
+                }
+                
+            } catch (error) {
+                console.error('Erro ao carregar usuário:', error);
+                elementoSaudacao.textContent = 'Erro ao carregar usuário';
+            }
+        }
+
+        async function carregarTransacoes() {
+            try {
+                const response = await fetch('/api/transacoes');
+                
+                if (!response.ok) throw new Error(`Erro HTTP: ${response.status}`);
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    transacoes = data.transacoes;
+                    renderizarTransacoes();
+                } else {
+                    throw new Error('Erro ao carregar transações');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar transações:', error);
+                document.getElementById('transacoes-body').innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 20px; color: #e74c3c;">
+                            Erro ao carregar transações
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        async function carregarDashboard() {
+            try {
+                const response = await fetch('/api/dashboard');
+                
+                if (!response.ok) throw new Error(`Erro HTTP: ${response.status}`);
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.querySelector('.transacoes-saldo').textContent = formatarMoeda(data.saldo);
+                    document.querySelector('.transacoes-receita').textContent = formatarMoeda(data.receitas);
+                    document.querySelector('.transacoes-despesa').textContent = formatarMoeda(data.despesas);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar dashboard:', error);
+            }
+        }
+
+        function renderizarTransacoes() {
+            const tbody = document.getElementById('transacoes-body');
+            
+            if (transacoes.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 20px;">
+                            Nenhuma transação cadastrada. Clique em "Novo" para começar.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = transacoes.map(transacao => `
+                <tr>
+                    <td>${transacao.descricao}</td>
+                    <td><span class="transacoes-badge ${transacao.tipo}">${transacao.tipo}</span></td>
+                    <td>${formatarData(transacao.data)}</td>
+                    <td class="transacoes-valor ${transacao.tipo}">${formatarMoeda(transacao.valor)}</td>
+                    <td class="transacoes-acoes">
+                        <button class="btn-editar" onclick="editarTransacao(${transacao.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-excluir" onclick="excluirTransacao(${transacao.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function criarTransacao(transacaoData) {
+            try {
+                const response = await fetch('/api/transacoes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(transacaoData)
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('Transação criada com sucesso!');
+                    await carregarTransacoes();
+                    await carregarDashboard();
+                    return true;
+                } else {
+                    alert('Erro: ' + result.message);
+                    return false;
+                }
+            } catch (error) {
+                console.error('Erro ao criar transação:', error);
+                alert('Erro ao conectar com o servidor.');
+                return false;
+            }
+        }
+
+        function editarTransacao(id) {
+            alert('Funcionalidade de edição será implementada em breve!');
+        }
+
+        function excluirTransacao(id) {
+            alert('Funcionalidade de exclusão será implementada em breve!');
+        }
+
+        async function logout() {
+            if (confirm('Tem certeza que deseja sair?')) {
+                try {
+                    await fetch('/api/logout', { 
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    window.location.href = '/';
+                } catch (error) {
+                    console.error('Erro no logout:', error);
+                    window.location.href = '/';
+                }
+            }
+        }
+
+        function abrirModal() {
+            document.getElementById('modalTransacao').style.display = 'block';
+            document.getElementById('data').valueAsDate = new Date();
+        }
+
+        function fecharModal() {
+            document.getElementById('modalTransacao').style.display = 'none';
+            document.getElementById('formTransacao').reset();
+        }
+
+        document.getElementById('formTransacao').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const transacaoData = {
+                descricao: document.getElementById('descricao').value,
+                tipo: document.getElementById('tipo').value,
+                data: document.getElementById('data').value,
+                valor: document.getElementById('valor').value
+            };
+
+            const sucesso = await criarTransacao(transacaoData);
+            
+            if (sucesso) {
+                fecharModal();
+            }
+        });
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('modalTransacao');
+            if (event.target === modal) {
+                fecharModal();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            carregarUsuario();
+        });
+    </script>
+</body>
+</html>
