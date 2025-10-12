@@ -28,6 +28,17 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
+function verificarAutenticacao(req, res, next) {
+    if (req.session && req.session.user) {
+        next();
+    } else {
+        return res.status(401).json({ 
+            success: false, 
+            message: 'Não autorizado. Faça login primeiro.' 
+        });
+    }
+}
+
 const requireAuth = (req, res, next) => {
     if (req.session && req.session.user) {
         return next();
@@ -193,14 +204,7 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-app.get('/api/transacoes', async (req, res) => {
-    if (!req.session || !req.session.user) {
-        return res.status(401).json({ 
-            success: false, 
-            error: 'Não autenticado' 
-        });
-    }
-
+app.get('/api/transacoes', verificarAutenticacao, async (req, res) => {
     try {
         const result = await pool.query(
             `SELECT id, descricao, tipo, valor, data 
@@ -223,14 +227,7 @@ app.get('/api/transacoes', async (req, res) => {
     }
 });
 
-app.post('/api/transacoes', async (req, res) => {
-    if (!req.session || !req.session.user) {
-        return res.status(401).json({ 
-            success: false, 
-            error: 'Não autenticado' 
-        });
-    }
-
+app.post('/api/transacoes', verificarAutenticacao, async (req, res) => {
     const { descricao, tipo, valor, data } = req.body;
 
     if (!descricao || !tipo || !valor || !data) {
@@ -269,14 +266,43 @@ app.post('/api/transacoes', async (req, res) => {
     }
 });
 
-app.get('/api/dashboard', async (req, res) => {
-    if (!req.session || !req.session.user) {
-        return res.status(401).json({ 
+app.put('/api/transacoes/:id', verificarAutenticacao, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { descricao, tipo, data, valor } = req.body;
+        const usuario_id = req.session.user.id;
+
+        const transacaoExistente = await pool.query(
+            'SELECT * FROM transacoes WHERE id = $1 AND usuario_id = $2',
+            [id, usuario_id]
+        );
+
+        if (transacaoExistente.rows.length === 0) {
+            return res.json({ 
+                success: false, 
+                message: 'Transação não encontrada' 
+            });
+        }
+
+        await pool.query(
+            'UPDATE transacoes SET descricao = $1, tipo = $2, data = $3, valor = $4 WHERE id = $5',
+            [descricao, tipo, data, parseFloat(valor), id]
+        );
+
+        res.json({ 
+            success: true, 
+            message: 'Transação atualizada com sucesso' 
+        });
+    } catch (error) {
+        console.error('Erro ao atualizar transação:', error);
+        res.json({ 
             success: false, 
-            error: 'Não autenticado' 
+            message: 'Erro interno do servidor' 
         });
     }
+});
 
+app.get('/api/dashboard', verificarAutenticacao, async (req, res) => {
     try {
         const saldoResult = await pool.query(`
             SELECT 

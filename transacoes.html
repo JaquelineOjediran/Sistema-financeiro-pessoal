@@ -245,8 +245,55 @@
         }
 
         function editarTransacao(id) {
-            alert('Funcionalidade de edição será implementada em breve!');
+    const transacao = transacoes.find(t => t.id === id);
+    if (!transacao) {
+        alert('Transação não encontrada!');
+        return;
+    }
+
+    transacaoEditando = transacao;
+    
+    document.getElementById('descricao').value = transacao.descricao;
+    document.getElementById('tipo').value = transacao.tipo;
+    
+    const dataFormatada = transacao.data.split('T')[0];
+    document.getElementById('data').value = dataFormatada;
+    
+    document.getElementById('valor').value = transacao.valor;
+    
+    document.querySelector('.transacoes-modal-header h2').textContent = 'Editar Transação';
+    
+    abrirModal();
+}
+
+        async function atualizarTransacao(id, transacaoData) {
+        try {
+            const response = await fetch(`/api/transacoes/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(transacaoData)
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                alert('Transação atualizada com sucesso!');
+                await carregarTransacoes();
+                await carregarDashboard();
+                return true;
+            } else {
+                alert('Erro: ' + result.message);
+                return false;
+            }
+        } catch (error) {
+            console.error('Erro ao atualizar transação:', error);
+            alert('Erro ao conectar com o servidor.');
+            return false;
         }
+    }
+
 
         function excluirTransacao(id) {
             alert('Funcionalidade de exclusão será implementada em breve!');
@@ -271,12 +318,16 @@
 
         function abrirModal() {
             document.getElementById('modalTransacao').style.display = 'block';
-            document.getElementById('data').valueAsDate = new Date();
+            if (!transacaoEditando) {
+                document.getElementById('data').valueAsDate = new Date();
+            }
         }
 
         function fecharModal() {
             document.getElementById('modalTransacao').style.display = 'none';
             document.getElementById('formTransacao').reset();
+            transacaoEditando = null;
+            document.querySelector('.transacoes-modal-header h2').textContent = 'Nova Transação';
         }
 
         document.getElementById('formTransacao').addEventListener('submit', async function(e) {
@@ -289,7 +340,13 @@
                 valor: document.getElementById('valor').value
             };
 
-            const sucesso = await criarTransacao(transacaoData);
+            let sucesso = false;
+    
+            if (transacaoEditando) {
+                sucesso = await atualizarTransacao(transacaoEditando.id, transacaoData);
+            } else {
+                sucesso = await criarTransacao(transacaoData);
+            }
             
             if (sucesso) {
                 fecharModal();
@@ -297,11 +354,11 @@
         });
 
         window.onclick = function(event) {
-            const modal = document.getElementById('modalTransacao');
-            if (event.target === modal) {
-                fecharModal();
-            }
+        const modal = document.getElementById('modalTransacao');
+        if (event.target === modal) {
+            fecharModal();
         }
+    }
 
         document.addEventListener('DOMContentLoaded', function() {
             carregarUsuario();
