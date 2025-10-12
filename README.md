@@ -8,8 +8,6 @@ psql -U postgres
 
 CREATE DATABASE financeiro_db;
 
-\q
-
 # crie um arquivo .env
 PORT=3000
 NODE_ENV=development
