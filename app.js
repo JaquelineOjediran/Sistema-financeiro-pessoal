@@ -18,7 +18,7 @@ app.use(session({
     secret: process.env.JWT_SECRET || 'segredo-desenvolvimento',
     resave: false,
     saveUninitialized: false,
-    cookie: { 
+    cookie: {
         secure: false,
         maxAge: 24 * 60 * 60 * 1000
     }
@@ -32,9 +32,9 @@ function verificarAutenticacao(req, res, next) {
     if (req.session && req.session.user) {
         next();
     } else {
-        return res.status(401).json({ 
-            success: false, 
-            message: 'Não autorizado. Faça login primeiro.' 
+        return res.status(401).json({
+            success: false,
+            message: 'Não autorizado. Faça login primeiro.'
         });
     }
 }
@@ -68,21 +68,21 @@ app.get('/transacoes', requireAuth, (req, res) => {
 
 app.get('/api/usuario', (req, res) => {
     if (!req.session || !req.session.user) {
-        return res.status(401).json({ 
-            success: false, 
-            error: 'Não autenticado' 
+        return res.status(401).json({
+            success: false,
+            error: 'Não autenticado'
         });
     }
 
-    res.json({ 
-        success: true, 
-        usuario: req.session.user 
+    res.json({
+        success: true,
+        usuario: req.session.user
     });
 });
 
 app.post('/api/cadastrar', async (req, res) => {
     const { nome, email, senha } = req.body;
-    
+
     try {
         const usuarioExistente = await pool.query(
             'SELECT id FROM usuarios WHERE email = $1',
@@ -90,9 +90,9 @@ app.post('/api/cadastrar', async (req, res) => {
         );
 
         if (usuarioExistente.rows.length > 0) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Este e-mail já está cadastrado.' 
+            return res.status(400).json({
+                success: false,
+                message: 'Este e-mail já está cadastrado.'
             });
         }
 
@@ -103,24 +103,24 @@ app.post('/api/cadastrar', async (req, res) => {
             'INSERT INTO usuarios (nome, email, senha) VALUES ($1, $2, $3) RETURNING id, nome, email',
             [nome, email, senhaCriptografada]
         );
-        
-        res.json({ 
-            success: true, 
+
+        res.json({
+            success: true,
             message: 'Cadastro realizado com sucesso!',
             user: result.rows[0]
         });
     } catch (error) {
         console.error('Erro no cadastro:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Erro no servidor.' 
+        res.status(500).json({
+            success: false,
+            message: 'Erro no servidor.'
         });
     }
 });
 
 app.post('/api/login', async (req, res) => {
     const { email, senha } = req.body;
-    
+
     try {
         const result = await pool.query(
             'SELECT * FROM usuarios WHERE email = $1',
@@ -128,19 +128,19 @@ app.post('/api/login', async (req, res) => {
         );
 
         if (result.rows.length === 0) {
-            return res.status(401).json({ 
-                success: false, 
-                message: 'E-mail ou senha incorretos.' 
+            return res.status(401).json({
+                success: false,
+                message: 'E-mail ou senha incorretos.'
             });
         }
 
         const usuario = result.rows[0];
         const senhaValida = await bcrypt.compare(senha, usuario.senha);
-        
+
         if (!senhaValida) {
-            return res.status(401).json({ 
-                success: false, 
-                message: 'E-mail ou senha incorretos.' 
+            return res.status(401).json({
+                success: false,
+                message: 'E-mail ou senha incorretos.'
             });
         }
 
@@ -153,24 +153,24 @@ app.post('/api/login', async (req, res) => {
         req.session.save((err) => {
             if (err) {
                 console.error('Erro ao salvar sessão:', err);
-                return res.status(500).json({ 
-                    success: false, 
-                    message: 'Erro no servidor.' 
+                return res.status(500).json({
+                    success: false,
+                    message: 'Erro no servidor.'
                 });
             }
 
-            res.json({ 
-                success: true, 
+            res.json({
+                success: true,
                 message: 'Login realizado com sucesso!',
                 user: req.session.user
             });
         });
-        
+
     } catch (error) {
         console.error('Erro no login:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Erro no servidor.' 
+        res.status(500).json({
+            success: false,
+            message: 'Erro no servidor.'
         });
     }
 });
@@ -183,22 +183,22 @@ app.post('/api/logout', (req, res) => {
     req.session.destroy((err) => {
         if (err) {
             console.error('Erro ao destruir sessão:', err);
-            return res.status(500).json({ 
-                success: false, 
-                message: 'Erro ao fazer logout' 
+            return res.status(500).json({
+                success: false,
+                message: 'Erro ao fazer logout'
             });
         }
-        
-        res.json({ 
-            success: true, 
-            message: 'Logout realizado com sucesso' 
+
+        res.json({
+            success: true,
+            message: 'Logout realizado com sucesso'
         });
     });
 });
 
 app.get('/api/health', (req, res) => {
-    res.json({ 
-        status: 'OK', 
+    res.json({
+        status: 'OK',
         message: 'Servidor está funcionando',
         timestamp: new Date().toISOString()
     });
@@ -213,16 +213,16 @@ app.get('/api/transacoes', verificarAutenticacao, async (req, res) => {
              ORDER BY data DESC, id DESC`,
             [req.session.user.id]
         );
-        
-        res.json({ 
-            success: true, 
-            transacoes: result.rows 
+
+        res.json({
+            success: true,
+            transacoes: result.rows
         });
     } catch (error) {
         console.error('Erro ao buscar transações:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Erro ao buscar transações' 
+        res.status(500).json({
+            success: false,
+            message: 'Erro ao buscar transações'
         });
     }
 });
@@ -231,16 +231,16 @@ app.post('/api/transacoes', verificarAutenticacao, async (req, res) => {
     const { descricao, tipo, valor, data } = req.body;
 
     if (!descricao || !tipo || !valor || !data) {
-        return res.status(400).json({ 
-            success: false, 
-            message: 'Todos os campos são obrigatórios' 
+        return res.status(400).json({
+            success: false,
+            message: 'Todos os campos são obrigatórios'
         });
     }
 
     if (!['receita', 'despesa'].includes(tipo)) {
-        return res.status(400).json({ 
-            success: false, 
-            message: 'Tipo deve ser "receita" ou "despesa"' 
+        return res.status(400).json({
+            success: false,
+            message: 'Tipo deve ser "receita" ou "despesa"'
         });
     }
 
@@ -251,17 +251,17 @@ app.post('/api/transacoes', verificarAutenticacao, async (req, res) => {
              RETURNING id, descricao, tipo, valor, data`,
             [req.session.user.id, descricao, tipo, parseFloat(valor), data]
         );
-        
-        res.json({ 
-            success: true, 
+
+        res.json({
+            success: true,
             message: 'Transação criada com sucesso!',
             transacao: result.rows[0]
         });
     } catch (error) {
         console.error('Erro ao criar transação:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Erro ao criar transação' 
+        res.status(500).json({
+            success: false,
+            message: 'Erro ao criar transação'
         });
     }
 });
@@ -278,9 +278,9 @@ app.put('/api/transacoes/:id', verificarAutenticacao, async (req, res) => {
         );
 
         if (transacaoExistente.rows.length === 0) {
-            return res.json({ 
-                success: false, 
-                message: 'Transação não encontrada' 
+            return res.json({
+                success: false,
+                message: 'Transação não encontrada'
             });
         }
 
@@ -289,15 +289,47 @@ app.put('/api/transacoes/:id', verificarAutenticacao, async (req, res) => {
             [descricao, tipo, data, parseFloat(valor), id]
         );
 
-        res.json({ 
-            success: true, 
-            message: 'Transação atualizada com sucesso' 
+        res.json({
+            success: true,
+            message: 'Transação atualizada com sucesso'
         });
     } catch (error) {
         console.error('Erro ao atualizar transação:', error);
-        res.json({ 
-            success: false, 
-            message: 'Erro interno do servidor' 
+        res.json({
+            success: false,
+            message: 'Erro interno do servidor'
+        });
+    }
+});
+
+app.delete('/api/transacoes/:id', verificarAutenticacao, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const usuario_id = req.session.user.id;
+
+        const transacaoExistente = await pool.query(
+            'SELECT * FROM transacoes WHERE id = $1 AND usuario_id = $2',
+            [id, usuario_id]
+        );
+
+        if (transacaoExistente.rows.length === 0) {
+            return res.json({
+                success: false,
+                message: 'Transação não encontrada'
+            });
+        }
+
+        await pool.query('DELETE FROM transacoes WHERE id = $1', [id]);
+
+        res.json({
+            success: true,
+            message: 'Transação excluída com sucesso'
+        });
+    } catch (error) {
+        console.error('Erro ao excluir transação:', error);
+        res.json({
+            success: false,
+            message: 'Erro interno do servidor'
         });
     }
 });
@@ -335,25 +367,25 @@ app.get('/api/dashboard', verificarAutenticacao, async (req, res) => {
         });
     } catch (error) {
         console.error('Erro ao buscar dashboard:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Erro ao buscar dados' 
+        res.status(500).json({
+            success: false,
+            message: 'Erro ao buscar dados'
         });
     }
 });
 
 app.use((req, res) => {
-    res.status(404).json({ 
-        success: false, 
-        message: 'Rota não encontrada' 
+    res.status(404).json({
+        success: false,
+        message: 'Rota não encontrada'
     });
 });
 
 app.use((error, req, res, next) => {
     console.error('Erro global:', error);
-    res.status(500).json({ 
-        success: false, 
-        message: 'Erro interno do servidor' 
+    res.status(500).json({
+        success: false,
+        message: 'Erro interno do servidor'
     });
 });
 

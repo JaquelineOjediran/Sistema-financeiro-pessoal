@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link rel="stylesheet" href="style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
+
 <body class="body-transacoes">
     <div class="container-transacoes">
         <header class="transacoes-header">
@@ -113,19 +115,19 @@
 
         async function carregarUsuario() {
             const elementoSaudacao = document.getElementById('saudacao-usuario');
-            
+
             try {
                 const response = await fetch('/api/usuario');
-                
+
                 if (response.status === 401) {
                     window.location.href = '/';
                     return;
                 }
-                
+
                 if (!response.ok) throw new Error(`Erro HTTP: ${response.status}`);
-                
+
                 const data = await response.json();
-                
+
                 if (data.success && data.usuario) {
                     elementoSaudacao.textContent = `Olá, ${data.usuario.nome}`;
                     await carregarTransacoes();
@@ -133,7 +135,7 @@
                 } else {
                     throw new Error('Dados do usuário inválidos');
                 }
-                
+
             } catch (error) {
                 console.error('Erro ao carregar usuário:', error);
                 elementoSaudacao.textContent = 'Erro ao carregar usuário';
@@ -143,11 +145,11 @@
         async function carregarTransacoes() {
             try {
                 const response = await fetch('/api/transacoes');
-                
+
                 if (!response.ok) throw new Error(`Erro HTTP: ${response.status}`);
-                
+
                 const data = await response.json();
-                
+
                 if (data.success) {
                     transacoes = data.transacoes;
                     renderizarTransacoes();
@@ -169,11 +171,11 @@
         async function carregarDashboard() {
             try {
                 const response = await fetch('/api/dashboard');
-                
+
                 if (!response.ok) throw new Error(`Erro HTTP: ${response.status}`);
-                
+
                 const data = await response.json();
-                
+
                 if (data.success) {
                     document.querySelector('.transacoes-saldo').textContent = formatarMoeda(data.saldo);
                     document.querySelector('.transacoes-receita').textContent = formatarMoeda(data.receitas);
@@ -186,7 +188,7 @@
 
         function renderizarTransacoes() {
             const tbody = document.getElementById('transacoes-body');
-            
+
             if (transacoes.length === 0) {
                 tbody.innerHTML = `
                     <tr>
@@ -227,7 +229,7 @@
                 });
 
                 const result = await response.json();
-                
+
                 if (result.success) {
                     alert('Transação criada com sucesso!');
                     await carregarTransacoes();
@@ -245,64 +247,85 @@
         }
 
         function editarTransacao(id) {
-    const transacao = transacoes.find(t => t.id === id);
-    if (!transacao) {
-        alert('Transação não encontrada!');
-        return;
-    }
+            const transacao = transacoes.find(t => t.id === id);
+            if (!transacao) {
+                alert('Transação não encontrada!');
+                return;
+            }
 
-    transacaoEditando = transacao;
-    
-    document.getElementById('descricao').value = transacao.descricao;
-    document.getElementById('tipo').value = transacao.tipo;
-    
-    const dataFormatada = transacao.data.split('T')[0];
-    document.getElementById('data').value = dataFormatada;
-    
-    document.getElementById('valor').value = transacao.valor;
-    
-    document.querySelector('.transacoes-modal-header h2').textContent = 'Editar Transação';
-    
-    abrirModal();
-}
+            transacaoEditando = transacao;
+
+            document.getElementById('descricao').value = transacao.descricao;
+            document.getElementById('tipo').value = transacao.tipo;
+
+            const dataFormatada = transacao.data.split('T')[0];
+            document.getElementById('data').value = dataFormatada;
+
+            document.getElementById('valor').value = transacao.valor;
+
+            document.querySelector('.transacoes-modal-header h2').textContent = 'Editar Transação';
+
+            abrirModal();
+        }
 
         async function atualizarTransacao(id, transacaoData) {
-        try {
-            const response = await fetch(`/api/transacoes/${id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(transacaoData)
-            });
+            try {
+                const response = await fetch(`/api/transacoes/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(transacaoData)
+                });
 
-            const result = await response.json();
-            
-            if (result.success) {
-                alert('Transação atualizada com sucesso!');
-                await carregarTransacoes();
-                await carregarDashboard();
-                return true;
-            } else {
-                alert('Erro: ' + result.message);
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('Transação atualizada com sucesso!');
+                    await carregarTransacoes();
+                    await carregarDashboard();
+                    return true;
+                } else {
+                    alert('Erro: ' + result.message);
+                    return false;
+                }
+            } catch (error) {
+                console.error('Erro ao atualizar transação:', error);
+                alert('Erro ao conectar com o servidor.');
                 return false;
             }
-        } catch (error) {
-            console.error('Erro ao atualizar transação:', error);
-            alert('Erro ao conectar com o servidor.');
-            return false;
         }
-    }
 
 
-        function excluirTransacao(id) {
-            alert('Funcionalidade de exclusão será implementada em breve!');
+        async function excluirTransacao(id) {
+            if (!confirm('Tem certeza que deseja excluir esta transação?\nEsta ação não pode ser desfeita.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/transacoes/${id}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('Transação excluída com sucesso!');
+                    await carregarTransacoes();
+                    await carregarDashboard();
+                } else {
+                    alert('Erro: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Erro ao excluir transação:', error);
+                alert('Erro ao conectar com o servidor.');
+            }
         }
 
         async function logout() {
             if (confirm('Tem certeza que deseja sair?')) {
                 try {
-                    await fetch('/api/logout', { 
+                    await fetch('/api/logout', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -330,9 +353,9 @@
             document.querySelector('.transacoes-modal-header h2').textContent = 'Nova Transação';
         }
 
-        document.getElementById('formTransacao').addEventListener('submit', async function(e) {
+        document.getElementById('formTransacao').addEventListener('submit', async function (e) {
             e.preventDefault();
-            
+
             const transacaoData = {
                 descricao: document.getElementById('descricao').value,
                 tipo: document.getElementById('tipo').value,
@@ -341,28 +364,29 @@
             };
 
             let sucesso = false;
-    
+
             if (transacaoEditando) {
                 sucesso = await atualizarTransacao(transacaoEditando.id, transacaoData);
             } else {
                 sucesso = await criarTransacao(transacaoData);
             }
-            
+
             if (sucesso) {
                 fecharModal();
             }
         });
 
-        window.onclick = function(event) {
-        const modal = document.getElementById('modalTransacao');
-        if (event.target === modal) {
-            fecharModal();
+        window.onclick = function (event) {
+            const modal = document.getElementById('modalTransacao');
+            if (event.target === modal) {
+                fecharModal();
+            }
         }
-    }
 
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             carregarUsuario();
         });
     </script>
 </body>
+
 </html>
