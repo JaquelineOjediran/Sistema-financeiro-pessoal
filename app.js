@@ -374,6 +374,143 @@ app.get('/api/dashboard', verificarAutenticacao, async (req, res) => {
     }
 });
 
+// ... mantém todas as rotas existentes ...
+
+// ⬇️⬇️⬇️ ADICIONE ESTAS NOVAS ROTAS DE RELATÓRIOS AQUI ⬇️⬇️⬇️
+
+// Rota para evolução mensal
+app.get('/api/relatorios/evolucao', verificarAutenticacao, async (req, res) => {
+    try {
+        const { meses = 12 } = req.query;
+        const usuario_id = req.session.user.id;
+
+        const result = await pool.query(`
+            SELECT 
+                TO_CHAR(data, 'YYYY-MM') as mes,
+                TO_CHAR(data, 'MM/YYYY') as mes_formatado,
+                COALESCE(SUM(CASE WHEN tipo = 'receita' THEN valor ELSE 0 END), 0) as receita,
+                COALESCE(SUM(CASE WHEN tipo = 'despesa' THEN valor ELSE 0 END), 0) as despesa,
+                COALESCE(SUM(CASE WHEN tipo = 'receita' THEN valor ELSE -valor END), 0) as saldo
+            FROM transacoes 
+            WHERE usuario_id = $1 
+            AND data >= CURRENT_DATE - INTERVAL '${meses} months'
+            GROUP BY TO_CHAR(data, 'YYYY-MM'), TO_CHAR(data, 'MM/YYYY')
+            ORDER BY mes DESC
+            LIMIT $2
+        `, [usuario_id, meses]);
+
+        const dados = result.rows.reverse(); // Ordenar do mais antigo para o mais recente
+
+        res.json({
+            success: true,
+            dados: {
+                meses: dados.map(item => item.mes_formatado),
+                receitas: dados.map(item => parseFloat(item.receita)),
+                despesas: dados.map(item => parseFloat(item.despesa)),
+                saldos: dados.map(item => parseFloat(item.saldo))
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao buscar evolução:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Erro ao gerar relatório de evolução' 
+        });
+    }
+});
+
+// Rota para distribuição por categorias (simulada - agrupa por descrição)
+app.get('/api/relatorios/categorias', verificarAutenticacao, async (req, res) => {
+    try {
+        const { meses = 12 } = req.query;
+        const usuario_id = req.session.user.id;
+
+        const result = await pool.query(`
+            SELECT 
+                descricao as categoria,
+                SUM(valor) as total
+            FROM transacoes 
+            WHERE usuario_id = $1 
+            AND tipo = 'despesa'
+            AND data >= CURRENT_DATE - INTERVAL '${meses} months'
+            GROUP BY descricao
+            HAVING SUM(valor) > 0
+            ORDER BY total DESC
+            LIMIT 10
+        `, [usuario_id]);
+
+        res.json({
+            success: true,
+            dados: {
+                categorias: result.rows.map(item => item.categoria),
+                valores: result.rows.map(item => parseFloat(item.total))
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao buscar categorias:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Erro ao gerar relatório de categorias' 
+        });
+    }
+});
+
+// Rota para tabela comparativa
+app.get('/api/relatorios/comparativo', verificarAutenticacao, async (req, res) => {
+    try {
+        const { meses = 12 } = req.query;
+        const usuario_id = req.session.user.id;
+
+        const result = await pool.query(`
+            SELECT 
+                TO_CHAR(data, 'MM/YYYY') as mes,
+                TO_CHAR(data, 'YYYY-MM') as mes_ordenacao,
+                COALESCE(SUM(CASE WHEN tipo = 'receita' THEN valor ELSE 0 END), 0) as receita,
+                COALESCE(SUM(CASE WHEN tipo = 'despesa' THEN valor ELSE 0 END), 0) as despesa,
+                COALESCE(SUM(CASE WHEN tipo = 'receita' THEN valor ELSE -valor END), 0) as saldo
+            FROM transacoes 
+            WHERE usuario_id = $1 
+            AND data >= CURRENT_DATE - INTERVAL '${meses} months'
+            GROUP BY TO_CHAR(data, 'MM/YYYY'), TO_CHAR(data, 'YYYY-MM')
+            ORDER BY mes_ordenacao DESC
+            LIMIT $2
+        `, [usuario_id, meses]);
+
+        // Calcular variação percentual
+        const dadosComVariacao = result.rows.map((item, index, array) => {
+            const variacao = index < array.length - 1 
+                ? (((parseFloat(item.saldo) - parseFloat(array[index + 1].saldo)) / parseFloat(array[index + 1].saldo)) * 100).toFixed(1)
+                : 0;
+            
+            return {
+                mes: item.mes,
+                receita: parseFloat(item.receita),
+                despesa: parseFloat(item.despesa),
+                saldo: parseFloat(item.saldo),
+                variacao: parseFloat(variacao)
+            };
+        });
+
+        res.json({
+            success: true,
+            dados: dadosComVariacao.reverse() // Do mais antigo para o mais recente
+        });
+    } catch (error) {
+        console.error('Erro ao buscar comparativo:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Erro ao gerar relatório comparativo' 
+        });
+    }
+});
+
+// Rota para servir a página de relatórios
+app.get('/relatorios', requireAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, 'relatorios.html'));
+});
+
+// ... mantém os middlewares de erro e app.listen() existentes ...
+
 app.use((req, res) => {
     res.status(404).json({
         success: false,

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatórios | Sistema Financeiro</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="body-transacoes">
+    <div class="container-transacoes">
+        <header class="transacoes-header">
+            <h1>Relatórios & Análises</h1>
+            <div class="transacoes-user-menu">
+                <span id="saudacao-usuario">Carregando...</span>
+                <div>
+                    <a href="transacoes.html" class="btn-secundario" style="margin-right: 10px;">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                    <button class="transacoes-logout-btn" onclick="logout()">Sair</button>
+                </div>
+            </div>
+        </header>
+
+        <section class="relatorios-filtros">
+            <div class="filtro-group">
+                <label for="periodo">Período:</label>
+                <select id="periodo" onchange="carregarRelatorios()">
+                    <option value="6">Últimos 6 meses</option>
+                    <option value="12" selected>Últimos 12 meses</option>
+                    <option value="3">Últimos 3 meses</option>
+                </select>
+            </div>
+            <button class="btn-exportar" onclick="exportarRelatorio()">
+                <i class="fas fa-download"></i> Exportar PDF
+            </button>
+        </section>
+
+        <section class="relatorios-grid">
+            <div class="relatorio-card">
+                <h3><i class="fas fa-chart-line"></i> Evolução Mensal</h3>
+                <div class="chart-container">
+                    <canvas id="graficoEvolucao"></canvas>
+                </div>
+            </div>
+
+            <div class="relatorio-card">
+                <h3><i class="fas fa-chart-pie"></i> Distribuição por Categoria</h3>
+                <div class="chart-container">
+                    <canvas id="graficoCategorias"></canvas>
+                </div>
+            </div>
+
+            <div class="relatorio-card full-width">
+                <h3><i class="fas fa-chart-bar"></i> Comparativo Mensal</h3>
+                <div class="tabela-comparativa">
+                    <table class="transacoes-tabela">
+                        <thead>
+                            <tr>
+                                <th>Mês</th>
+                                <th>Receitas</th>
+                                <th>Despesas</th>
+                                <th>Saldo</th>
+                                <th>Variação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaComparativo">
+                            <tr>
+                                <td colspan="5" style="text-align: center;">Carregando...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="relatorios.js"></script>
+</body>
+
+</html>
